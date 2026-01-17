@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>兒童英文學習</title>
+
+<style>
+body {
+  font-family: system-ui;
+  background: linear-gradient(#fff1c1, #ffd89c);
+  text-align: center;
+  padding: 20px;
+}
+.card {
+  background: white;
+  border-radius: 25px;
+  padding: 25px;
+  max-width: 420px;
+  margin: auto;
+}
+button {
+  font-size: 1.1em;
+  padding: 10px 18px;
+  margin: 6px;
+  border-radius: 15px;
+  border: none;
+  background: #ff9800;
+  color: white;
+}
+input, textarea {
+  font-size: 1.1em;
+  padding: 8px;
+  width: 85%;
+  border-radius: 10px;
+  border: 1px solid #ccc;
+}
+img {
+  width: 150px;
+  margin: 10px;
+}
+.mode {
+  margin-top: 10px;
+}
+.star {
+  font-size: 1.4em;
+}
+.hidden {
+  display: none;
+}
+</style>
+</head>
+
+<body>
+
+<div class="card">
+
+  <div class="star">⭐ 星星：<span id="stars">0</span></div>
+
+  <!-- 模式切換 -->
+  <div class="mode">
+    <button onclick="setMode('learn')">🎒 學習</button>
+    <button onclick="setMode('parent')">👨‍👩‍👧 家長</button>
+    <button onclick="setMode('record')">📊 紀錄</button>
+  </div>
+
+  <!-- 學習模式 -->
+  <div id="learn">
+    <h2>中文提示</h2>
+    <h1 id="zh">蘋果</h1>
+    <img id="pic" src="">
+    <br>
+    <input id="answer" placeholder="輸入英文">
+    <br>
+    <button onclick="check()">檢查答案</button>
+    <br>
+    <button onclick="speak()">🔊 聽發音</button>
+    <button onclick="listen()">🎤 我來唸</button>
+    <p id="msg"></p>
+  </div>
+
+  <!-- 家長模式 -->
+  <div id="parent" class="hidden">
+    <h3>家長輸入單字</h3>
+    <p>格式：英文 中文（一行一個）</p>
+    <textarea id="parentInput" rows="5"></textarea><br>
+    <button onclick="saveWords()">儲存</button>
+    <p id="parentMsg"></p>
+  </div>
+
+  <!-- 紀錄 -->
+  <div id="record" class="hidden">
+    <h3>學習紀錄</h3>
+    <p>目前星星 ⭐：<span id="recordStars"></span></p>
+  </div>
+
+</div>
+
+<script>
+let words = JSON.parse(localStorage.getItem("words")) || [
+  { en: "apple", zh: "蘋果", img: "https://via.placeholder.com/150?text=Apple" },
+  { en: "cat", zh: "貓", img: "https://via.placeholder.com/150?text=Cat" },
+  { en: "dog", zh: "狗", img: "https://via.placeholder.com/150?text=Dog" }
+];
+
+let stars = Number(localStorage.getItem("stars")) || 0;
+let current = {};
+
+document.getElementById("stars").innerText = stars;
+
+function setMode(m) {
+  ["learn","parent","record"].forEach(id=>{
+    document.getElementById(id).classList.add("hidden");
+  });
+  document.getElementById(m).classList.remove("hidden");
+
+  if (m === "record") {
+    document.getElementById("recordStars").innerText = stars;
+  }
+}
+
+function next() {
+  current = words[Math.floor(Math.random() * words.length)];
+  document.getElementById("zh").innerText = current.zh;
+  document.getElementById("pic").src = current.img;
+  document.getElementById("answer").value = "";
+  document.getElementById("msg").innerText = "";
+}
+
+function check() {
+  const a = document.getElementById("answer").value.toLowerCase();
+  if (a === current.en) {
+    stars++;
+    localStorage.setItem("stars", stars);
+    document.getElementById("stars").innerText = stars;
+    document.getElementById("msg").innerText = "🎉 好棒！";
+    setTimeout(next, 800);
+  } else {
+    document.getElementById("msg").innerText = "😊 再試一次";
+  }
+}
+
+function speak() {
+  const u = new SpeechSynthesisUtterance(current.en);
+  u.lang = "en-US";
+  speechSynthesis.speak(u);
+}
+
+function listen() {
+  const R = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!R) return alert("瀏覽器不支援語音辨識");
+  const r = new R();
+  r.lang = "en-US";
+  r.onresult = e => {
+    if (e.results[0][0].transcript.toLowerCase().includes(current.en)) {
+      stars++;
+      localStorage.setItem("stars", stars);
+      document.getElementById("stars").innerText = stars;
+      document.getElementById("msg").innerText = "🌟 發音很棒！";
+      setTimeout(next, 800);
+    }
+  };
+  r.start();
+}
+
+function saveWords() {
+  const lines = document.getElementById("parentInput").value.split("\n");
+  lines.forEach(l=>{
+    const [en, zh] = l.split(" ");
+    if (en && zh) {
+      words.push({
+        en,
+        zh,
+        img: https://via.placeholder.com/150?text=${en}
+      });
+    }
+  });
+  localStorage.setItem("words", JSON.stringify(words));
+  document.getElementById("parentMsg").innerText = "✅ 已儲存";
+}
+
+next();
+</script>
+</body>
+</html>
