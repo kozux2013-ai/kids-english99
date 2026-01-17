@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>快樂學英文 - 計時挑戰版</title>
+
+  <style>
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      background: linear-gradient(to bottom, #e6f3ff, #cce0ff);
+      margin: 0;
+      padding: 20px;
+      min-height: 100vh;
+      text-align: center;
+      color: #333;
+    }
+    h1 {
+      font-size: 2.5rem;
+      margin: 20px 0 10px;
+      color: #1e40af;
+      cursor: pointer;
+      user-select: none;
+    }
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      max-width: 500px;
+      margin: 0 auto 20px;
+    }
+    #score, #bestScore {
+      font-size: 1.6rem;
+      font-weight: bold;
+      padding: 8px 16px;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    #score { color: #7c3aed; background: rgba(255,255,255,0.7); }
+    #bestScore { color: #059669; background: #d1fae5; font-size: 1.4rem; }
+    .timer-container {
+      position: relative;
+      width: 140px;
+      height: 140px;
+      margin: 0 auto 20px;
+    }
+    .timer-circle { width: 100%; height: 100%; }
+    .timer-circle-bg { fill: none; stroke: #e5e7eb; stroke-width: 12; }
+    .timer-circle-progress {
+      fill: none;
+      stroke: #10b981;
+      stroke-width: 12;
+      stroke-linecap: round;
+      transform: rotate(-90deg);
+      transform-origin: 50% 50%;
+      transition: stroke 0.5s ease;
+    }
+    .timer-text {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 3rem;
+      font-weight: bold;
+      color: #1e40af;
+    }
+    .low-time { animation: pulse 1s infinite; }
+    @keyframes pulse {
+      0%, 100% { transform: translate(-50%, -50%) scale(1); }
+      50% { transform: translate(-50%, -50%) scale(1.08); }
+    }
+    .card {
+      background: white;
+      border-radius: 20px;
+      padding: 30px;
+      margin: 0 auto;
+      max-width: 360px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+    }
+    .zh-word {
+      font-size: 3.5rem;
+      font-weight: bold;
+      margin: 20px 0;
+      color: #dc2626;
+    }
+    input {
+      font-size: 1.6rem;
+      padding: 12px;
+      width: 85%;
+      text-align: center;
+      border: 3px solid #bfdbfe;
+      border-radius: 12px;
+      margin: 15px 0;
+    }
+    input:focus { border-color: #3b82f6; outline: none; }
+    input:disabled { background: #f3f4f6; cursor: not-allowed; }
+    button {
+      font-size: 1.3rem;
+      padding: 12px 28px;
+      margin: 8px 6px;
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-start { background: #f59e0b; color: white; }
+    .btn-start:hover { background: #d97706; }
+    .btn-check { background: #3b82f6; color: white; }
+    .btn-check:hover { background: #2563eb; }
+    .btn-speak { background: #10b981; color: white; }
+    .btn-speak:hover { background: #059669; }
+    .result {
+      font-size: 1.6rem;
+      font-weight: bold;
+      margin-top: 25px;
+      min-height: 2.5rem;
+    }
+    .correct { color: #059669; }
+    .wrong { color: #dc2626; }
+    #end-message {
+      display: none;
+      font-size: 1.8rem;
+      font-weight: bold;
+      color: #1e40af;
+      margin: 30px 0;
+    }
+  </style>
+</head>
+
+<body>
+
+  <header>
+    <h1 id="title">快樂學英文 ✨</h1>
+    <div>
+      <div id="score">分數：0</div>
+      <div id="bestScore">最佳：0</div>
+    </div>
+  </header>
+
+  <div class="timer-container">
+    <svg class="timer-circle" viewBox="0 0 100 100">
+      <circle class="timer-circle-bg" cx="50" cy="50" r="45"></circle>
+      <circle class="timer-circle-progress" id="progress" cx="50" cy="50" r="45"></circle>
+    </svg>
+    <div class="timer-text" id="timer">60</div>
+  </div>
+
+  <div class="card">
+    <div class="zh-word" id="chinese">準備開始！</div>
+
+    <input type="text" id="answer" placeholder="輸入英文" autocomplete="off" disabled />
+
+    <div>
+      <button class="btn-start" id="startBtn">開始挑戰！</button>
+      <button class="btn-check" id="checkBtn" style="display:none;">送出</button>
+      <button class="btn-speak" id="speakBtn" style="display:none;">🔊 聽發音</button>
+    </div>
+
+    <div class="result" id="result"></div>
+  </div>
+
+  <div id="end-message">
+    時間到啦！<br>你的總分：<span id="finalScore">0</span> 分<br>超厲害！再來一輪嗎？✨
+  </div>
+
+  <script>
+    // 基本設定
+    const TOTAL_TIME = 60;
+    const POINTS_PER_QUESTION = 10;
+
+    let words = [
+      { en: "dog", zh: "狗" },
+      { en: "cat", zh: "貓" },
+      { en: "apple", zh: "蘋果" },
+      { en: "book", zh: "書" },
+      { en: "bird", zh: "鳥" },
+      { en: "fish", zh: "魚" },
+      { en: "car", zh: "車" },
+      { en: "house", zh: "房子" },
+      { en: "sun", zh: "太陽" },
+      { en: "moon", zh: "月亮" }
+    ];
+
+    let currentWord;
+    let score = 0;
+    let timeLeft = TOTAL_TIME;
+    let timerInterval;
+    let gameRunning = false;
+
+    // 取得元素（加防護）
+    const startBtn = document.getElementById('startBtn');
+    const checkBtn = document.getElementById('checkBtn');
+    const speakBtn = document.getElementById('speakBtn');
+    const input = document.getElementById('answer');
+    const chinese = document.getElementById('chinese');
+    const result = document.getElementById('result');
+    const timerText = document.getElementById('timer');
+    const progress = document.getElementById('progress');
+    const scoreEl = document.getElementById('score');
+    const finalScore = document.getElementById('finalScore');
+    const endMessage = document.getElementById('end-message');
+
+    const circumference = 2 * Math.PI * 45;
+    if (progress) progress.style.strokeDasharray = circumference;
+
+    function updateScore() {
+      if (scoreEl) scoreEl.textContent = `分數：${score}`;
+    }
+
+    function updateTimerDisplay() {
+      if (!timerText) return;
+      timerText.textContent = timeLeft;
+      const progressValue = (TOTAL_TIME - timeLeft) / TOTAL_TIME;
+      const offset = circumference * progressValue;
+      if (progress) {
+        progress.style.strokeDashoffset = circumference - offset;
+        progress.style.stroke = timeLeft > 30 ? '#10b981' : timeLeft > 10 ? '#f59e0b' : '#ef4444';
+      }
+      if (timeLeft <= 10) {
+        timerText.classList.add('low-time');
+      } else {
+        timerText.classList.remove('low-time');
+      }
+    }
+
+    function newQuestion() {
+      currentWord = words[Math.floor(Math.random() * words.length)];
+      if (chinese) chinese.textContent = currentWord.zh;
+      if (input) input.value = "";
+      if (result) {
+        result.textContent = "";
+        result.className = "result";
+      }
+    }
+
+    function startGame() {
+      if (gameRunning) return;
+
+      gameRunning = true;
+      score = 0;
+      timeLeft = TOTAL_TIME;
+      updateScore();
+      updateTimerDisplay();
+
+      if (startBtn) startBtn.style.display = "none";
+      if (checkBtn) checkBtn.style.display = "inline-block";
+      if (speakBtn) speakBtn.style.display = "inline-block";
+      if (input) {
+        input.disabled = false;
+        input.focus();
+      }
+
+      newQuestion();
+
+      timerInterval = setInterval(() => {
+        timeLeft--;
+        updateTimerDisplay();
+        if (timeLeft <= 0) {
+          endGame();
+        }
+      }, 1000);
+    }
+
+    function checkAnswer() {
+      if (!gameRunning || !input) return;
+      const userInput = input.value.trim().toLowerCase();
+      if (userInput === currentWord.en.toLowerCase()) {
+        if (result) {
+          result.textContent = "太棒了！⭐⭐ 正確！";
+          result.className = "result correct";
+        }
+        score += POINTS_PER_QUESTION;
+        updateScore();
+        setTimeout(newQuestion, 1500);
+      } else {
+        if (result) {
+          result.textContent = "再試一次喔～ 💪";
+          result.className = "result wrong";
+        }
+      }
+    }
+
+    function speak() {
+      if (!('speechSynthesis' in window)) return;
+      window.speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance(currentWord.en);
+      u.lang = "en-US";
+      u.rate = 0.9;
+      window.speechSynthesis.speak(u);
+    }
+
+    function endGame() {
+      clearInterval(timerInterval);
+      gameRunning = false;
+      if (input) input.disabled = true;
+      if (checkBtn) checkBtn.style.display = "none";
+      if (speakBtn) speakBtn.style.display = "none";
+      if (startBtn) {
+        startBtn.textContent = "再玩一次！";
+        startBtn.style.display = "inline-block";
+      }
+      if (endMessage) endMessage.style.display = "block";
+      if (finalScore) finalScore.textContent = score;
+      if (chinese) chinese.textContent = "遊戲結束！";
+      if (result) result.textContent = "";
+      if (timerText) timerText.classList.remove("low-time");
+    }
+
+    // 事件綁定
+    if (startBtn) startBtn.addEventListener('click', startGame);
+    if (checkBtn) checkBtn.addEventListener('click', checkAnswer);
+    if (speakBtn) speakBtn.addEventListener('click', speak);
+    if (input) {
+      input.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') checkAnswer();
+      });
+    }
+
+    // 初始化
+    updateScore();
+    updateTimerDisplay();
+  </script>
+</body>
+</html>
